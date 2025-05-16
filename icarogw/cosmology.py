@@ -1,8 +1,9 @@
 from .cupy_pal import cp2np, np2cp, get_module_array, get_module_array_scipy, iscupy, np, sn, is_there_cupy
 from icarogw import cupy_pal
-from scipy.integrate import cumtrapz
+from scipy.integrate import cumulative_trapezoid as cumtrapz
 import mpmath
 import scipy.stats, scipy.misc
+from scipy.special import erf
 
 COST_C= 299792.458 # Speed of light in km/s
 
@@ -671,3 +672,94 @@ class log_powerlaw_absM_rate(basic_absM_rate):
         toret[(M>sch.Mmaxobs)]=-xp.inf
         return toret
 
+
+class BasisFunction_astropycosmology(astropycosmology):
+    
+    def  build_cosmology(self, astropy_cosmo, amplitudes, phases, z_tr):
+        '''
+        Construct the cosmology
+        
+        Parameters
+        ----------
+        astropy_cosmo: Astropy.cosmology class
+            initialize the cosmology up to zmax
+        amplitudes, phases: arrays
+            amplitudes and phases of the basis functions
+        z_tr: float
+            transition redshift near z=0
+        '''
+        
+        super().build_cosmology(astropy_cosmo)
+        dlem = np.power(10.,self.log10_dl_at_z_cpu)
+        dlbydz_em = np.power(10.,self.log10_ddl_by_dz_cpu)
+
+        dlgw_by_dlem = self.basis_f(self.z_cpu, amplitudes, phases, self.zmax, z_tr)
+        dlgw_by_dlem_by_dz = self.basis_f_deri(self.z_cpu, amplitudes, phases, self.zmax, z_tr)
+        self.log10_dl_at_z_cpu = np.log10(dlem*dlgw_by_dlem)
+        self.log10_ddl_by_dz_cpu = np.log10(np.abs(dlbydz_em*dlgw_by_dlem+dlem*dlgw_by_dlem_by_dz))
+        
+        if is_there_cupy():
+            self.log10_dl_at_z_gpu=np2cp(self.log10_dl_at_z_cpu)
+            self.log10_ddl_by_dz_gpu=np2cp(self.log10_ddl_by_dz_cpu)
+
+    def transition_func(self, z, z_tr):
+        """
+        Transition from d_GW/d_EM = 1 at z-->0 to cos basis
+
+        Parameters
+        ----------
+        z : float/array, redshift
+        z_tr : float, redshift at which the transition is at midpoint (i.e. transition_func = 1 at z_tr*2)
+
+        Returns
+        -------
+        array
+        """
+        return 0.5*(1+erf((z - z_tr)/z_tr))-0.5*(1+erf(-1))
+
+
+    def basis_f(self, z, amplitudes, phases, zmax, z_tr):
+        """
+        Rconstruction of d_GW/d_EMr via basis functions
+
+        Parameters
+        ----------
+        z : float/array, redshifts
+        amplitudes : amplitudes of the cos in basis functions
+        phases : phases of cos in basis functions (offsetting so they don't all peak around the same values)
+        zmax : float, maximum redshift value
+
+        Returns
+        -------
+        array,
+        predicted ratio, 1 + combination of basis functions
+        """
+        basis_functions_terms = np.array([self.transition_func(z, z_tr)*
+            alpha_nu * np.cos(z * nu * np.pi / zmax + phase_nu)
+            for nu, (alpha_nu, phase_nu) in enumerate(zip(amplitudes, phases), start=1)
+        ])
+        return 1 + np.sum(basis_functions_terms, axis=0)
+    
+
+    def basis_f_deri(self, z, amplitudes, phases, zmax, z_tr):
+        """
+        Derivatives of d_GW/d_EMr via basis functions
+
+        Parameters
+        ----------
+        z : float/array, redshifts
+        amplitudes : amplitudes of the cos in basis functions
+        phases : phases of cos in basis functions (offsetting so they don't all peak around the same values)
+        Xlim : float, maximum redshift value
+
+        Returns
+        -------
+        array,
+        derivatives of predicted ratio, d/dz (1 + combination of basis functions)
+        """
+        transition_func_deri = 1/np.sqrt(np.pi)*np.exp(-((z-z_tr)/z_tr)**2) /z_tr
+        basis_functions_deri = np.array([transition_func_deri * alpha_nu * np.cos(z * nu * np.pi / zmax + phase_nu) -
+            self.transition_func(z, z_tr) * alpha_nu*nu*np.pi/zmax * np.sin(z * nu * np.pi / zmax + phase_nu)
+            for nu, (alpha_nu, phase_nu) in enumerate(zip(amplitudes, phases), start=1)
+        ])
+        return np.sum(basis_functions_deri, axis=0)
