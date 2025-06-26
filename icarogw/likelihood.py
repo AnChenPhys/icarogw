@@ -74,13 +74,16 @@ class hierarchical_likelihood(bilby.Likelihood):
         #print('log 1',self.posterior_samples_dict.n_ev*xp.log(self.injections.Tobs))
         #print('log 3',xp.sum(xp.log(self.posterior_samples_dict.sum_weights)))  
         # Combine all the terms  
-        if self.rate_model.scale_free:
-            # Log likelihood for scale free model, Eq. 1.3 on the document
-            log_likeli = xp.sum(xp.log(self.posterior_samples_dict.sum_weights))-self.posterior_samples_dict.n_ev*xp.log(self.injections.pseudo_rate)
+        if True in np.isnan(self.rate_model.cw.cosmology.log10_ddl_by_dz_cpu):
+            log_likeli = -np.inf
         else:
-            Nexp=self.injections.expected_number_detections()
-            # Log likelihood for  the model, Eq. 1.1 on the document
-            log_likeli = -Nexp + self.posterior_samples_dict.n_ev*xp.log(self.injections.Tobs)+xp.sum(xp.log(self.posterior_samples_dict.sum_weights))
+            if self.rate_model.scale_free:
+                # Log likelihood for scale free model, Eq. 1.3 on the document
+                log_likeli = xp.sum(xp.log(self.posterior_samples_dict.sum_weights))-self.posterior_samples_dict.n_ev*xp.log(self.injections.pseudo_rate)
+            else:
+                Nexp=self.injections.expected_number_detections()
+                # Log likelihood for  the model, Eq. 1.1 on the document
+                log_likeli = -Nexp + self.posterior_samples_dict.n_ev*xp.log(self.injections.Tobs)+xp.sum(xp.log(self.posterior_samples_dict.sum_weights))
         #print('Nexp',-Nexp)  
 
         # Controls on the value of the log-likelihood. If the log-likelihood is -inf, then set it to the smallest

@@ -696,7 +696,7 @@ class BasisFunction_astropycosmology(astropycosmology):
         dlgw_by_dlem = self.basis_f(self.z_cpu, amplitudes, phases, self.zmax, z_tr)
         dlgw_by_dlem_by_dz = self.basis_f_deri(self.z_cpu, amplitudes, phases, self.zmax, z_tr)
         self.log10_dl_at_z_cpu = np.log10(dlem*dlgw_by_dlem)
-        self.log10_ddl_by_dz_cpu = np.log10(np.abs(dlbydz_em*dlgw_by_dlem+dlem*dlgw_by_dlem_by_dz))
+        self.log10_ddl_by_dz_cpu = np.log10(dlbydz_em*dlgw_by_dlem+dlem*dlgw_by_dlem_by_dz)
         
         if is_there_cupy():
             self.log10_dl_at_z_gpu=np2cp(self.log10_dl_at_z_cpu)
