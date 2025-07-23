@@ -675,7 +675,7 @@ class log_powerlaw_absM_rate(basic_absM_rate):
 
 class BasisFunction_astropycosmology(astropycosmology):
     
-    def  build_cosmology(self, astropy_cosmo, amplitudes, phases, z_tr):
+    def  build_cosmology(self, astropy_cosmo, amplitudes, phases, z_tr, zmax_b):
         '''
         Construct the cosmology
         
@@ -687,14 +687,16 @@ class BasisFunction_astropycosmology(astropycosmology):
             amplitudes and phases of the basis functions
         z_tr: float
             transition redshift near z=0
+        zmax_b: float
+            zmax in the basis function
         '''
         
         super().build_cosmology(astropy_cosmo)
         dlem = np.power(10.,self.log10_dl_at_z_cpu)
         dlbydz_em = np.power(10.,self.log10_ddl_by_dz_cpu)
 
-        dlgw_by_dlem = self.basis_f(self.z_cpu, amplitudes, phases, self.zmax, z_tr)
-        dlgw_by_dlem_by_dz = self.basis_f_deri(self.z_cpu, amplitudes, phases, self.zmax, z_tr)
+        dlgw_by_dlem = self.basis_f(self.z_cpu, amplitudes, phases, zmax_b, z_tr)
+        dlgw_by_dlem_by_dz = self.basis_f_deri(self.z_cpu, amplitudes, phases, zmax_b, z_tr)
         self.log10_dl_at_z_cpu = np.log10(dlem*dlgw_by_dlem)
         self.log10_ddl_by_dz_cpu = np.log10(dlbydz_em*dlgw_by_dlem+dlem*dlgw_by_dlem_by_dz)
         
@@ -728,6 +730,7 @@ class BasisFunction_astropycosmology(astropycosmology):
         amplitudes : amplitudes of the cos in basis functions
         phases : phases of cos in basis functions (offsetting so they don't all peak around the same values)
         zmax : float, maximum redshift value
+        z_tr : float, threshold redshift of the transition function
 
         Returns
         -------
@@ -750,7 +753,8 @@ class BasisFunction_astropycosmology(astropycosmology):
         z : float/array, redshifts
         amplitudes : amplitudes of the cos in basis functions
         phases : phases of cos in basis functions (offsetting so they don't all peak around the same values)
-        Xlim : float, maximum redshift value
+        zmax : float, maximum redshift value
+        z_tr : float, threshold redshift of the transition function
 
         Returns
         -------

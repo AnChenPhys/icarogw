@@ -440,11 +440,9 @@ class basis_func_wrap(object):
     def __init__(self,bgwrap,N_basis):
         self.bgwrap=copy.deepcopy(bgwrap)
         self.N_basis=N_basis
-        self.population_parameters=self.bgwrap.population_parameters+['z_tr']
+        self.population_parameters=self.bgwrap.population_parameters+['z_tr','zmax_b']
         for nu in range(1,self.N_basis+1):
-            self.population_parameters+=[f'alpha_{nu}']
-        for nu in range(1,self.N_basis+1):
-            self.population_parameters+=[f'phase_{nu}']
+            self.population_parameters+=[f'alpha_{nu}',f'phase_{nu}']
         self.cosmology=BasisFunction_astropycosmology(bgwrap.cosmology.zmax)
     def update(self,**kwargs):
         amplitudes=[]
@@ -453,7 +451,7 @@ class basis_func_wrap(object):
             amplitudes.append(kwargs[f'alpha_{nu}'])
             phases.append(kwargs[f'phase_{nu}'])
         bgdict={key:kwargs[key] for key in self.bgwrap.population_parameters}
-        self.cosmology.build_cosmology(self.bgwrap.astropycosmo(**bgdict),amplitudes=amplitudes,phases=phases,z_tr=kwargs['z_tr'])
+        self.cosmology.build_cosmology(self.bgwrap.astropycosmo(**bgdict),amplitudes=amplitudes,phases=phases,z_tr=kwargs['z_tr'],zmax_b=kwargs['zmax_b'])
 
 
 # A parent class for the standard 1D mass probabilities
