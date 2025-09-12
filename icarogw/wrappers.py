@@ -400,6 +400,7 @@ class w0waCDM_wrap(object):
         self.cosmology=astropycosmology(zmax)
         self.astropycosmo=w0waCDM
     def update(self,**kwargs):
+        kwargs['Ode0']=1-kwargs['Om0']
         self.cosmology.build_cosmology(self.astropycosmo(**kwargs))
 
 # LVK Reviewed
@@ -430,6 +431,8 @@ class cM_mod_wrap(object):
         self.cosmology=cM_astropycosmology(bgwrap.cosmology.zmax)
     def update(self,**kwargs):
         bgdict={key:kwargs[key] for key in self.bgwrap.population_parameters}
+        if self.bgwrap.astropycosmo==w0waCDM:
+            bgdict['Ode0']=1-bgdict['Om0']
         self.cosmology.build_cosmology(self.bgwrap.astropycosmo(**bgdict),cM=kwargs['cM'])
 
 # LVK Reviewed
