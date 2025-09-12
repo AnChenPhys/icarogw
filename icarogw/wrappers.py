@@ -82,6 +82,7 @@ class Flatw0waCDM_wrap(object):
         self.cosmology=astropycosmology(zmax)
         self.astropycosmo=Flatw0waCDM
     def update(self,**kwargs):
+        kwargs['Ode0']=1-kwargs['Om0']
         self.cosmology.build_cosmology(self.astropycosmo(**kwargs))
 
 class eps0_mod_wrap(object):
