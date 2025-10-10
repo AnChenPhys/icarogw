@@ -452,7 +452,7 @@ class basis_func_wrap(object):
             phases.append(kwargs[f'phase_{nu}'])
         bgdict={key:kwargs[key] for key in self.bgwrap.population_parameters}
         self.cosmology.build_cosmology(self.bgwrap.astropycosmo(**bgdict),amplitudes=amplitudes,phases=phases,z_tr=kwargs['z_tr'],zmax_b=kwargs['zmax_b'])
-
+        # print(amplitudes,self.cosmology.log10_ddl_by_dz_cpu,np.where(np.isnan(self.cosmology.log10_ddl_by_dz_cpu)==True)[0])
 
 # A parent class for the standard 1D mass probabilities
 class pm_prob(object):

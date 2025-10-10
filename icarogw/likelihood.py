@@ -5,10 +5,11 @@ import copy
 import bilby
 import icarogw
 from .wrappers import FlatLambdaCDM_wrap
+import warnings
 
 # LVK Reviewed
 class hierarchical_likelihood(bilby.Likelihood):
-    def __init__(self, posterior_samples_dict, injections, rate_model, nparallel=None, neffPE=20,neffINJ=None):
+    def __init__(self, posterior_samples_dict, injections, rate_model, nparallel=None, neffPE=20,neffINJ=None,inf_to_num=True):
         '''
         Base class for an hierachical likelihood. It just saves all the input requirements for a general hierarchical analysis
         
@@ -34,6 +35,7 @@ class hierarchical_likelihood(bilby.Likelihood):
         self.rate_model=rate_model
         self.posterior_samples_dict=posterior_samples_dict
         self.posterior_samples_dict.build_parallel_posterior(nparallel=nparallel)
+        self.inf_to_num = inf_to_num
         
         if neffINJ is None:
             self.neffINJ=4*self.posterior_samples_dict.n_ev
@@ -63,12 +65,18 @@ class hierarchical_likelihood(bilby.Likelihood):
         xp = get_module_array(self.injections.log_weights)
 
         if (Neff<self.neffINJ) | (Neff==0.):
-            return float(xp.nan_to_num(-xp.inf))
-
+            if self.inf_to_num:
+                return float(xp.nan_to_num(-xp.inf))
+            else:
+                return -xp.inf
+            
         # Update the weights on the PE
         self.posterior_samples_dict.update_weights(self.rate_model)
         if xp.any(self.posterior_samples_dict.get_effective_number_of_PE()<self.neffPE):
-            return float(xp.nan_to_num(-xp.inf))
+            if self.inf_to_num:
+                return float(xp.nan_to_num(-xp.inf))
+            else:
+                return -xp.inf
         
         integ=self.posterior_samples_dict.log_weights # Extract a matrix N_ev X N_samples of log weights
         #print('log 1',self.posterior_samples_dict.n_ev*xp.log(self.injections.Tobs))
@@ -76,6 +84,9 @@ class hierarchical_likelihood(bilby.Likelihood):
         # Combine all the terms  
         if True in np.isnan(self.rate_model.cw.cosmology.log10_ddl_by_dz_cpu):
             log_likeli = -np.inf
+            z_to = self.rate_model.cw.cosmology.z_cpu[np.where(np.isnan(self.rate_model.cw.cosmology.log10_ddl_by_dz_cpu)==True)[0][0]]
+            alpha_list = [self.parameters[f'alpha_{nu}'] for nu in range(1,self.rate_model.cw.N_basis+1)]
+            warnings.warn(f'Discarding basis functions with dGW turn-over point at z={z_to}, amplitudes = '+str(alpha_list), UserWarning)
         else:
             if self.rate_model.scale_free:
                 # Log likelihood for scale free model, Eq. 1.3 on the document
@@ -91,10 +102,14 @@ class hierarchical_likelihood(bilby.Likelihood):
         if log_likeli == xp.inf:
             raise ValueError('LOG-likelihood must be smaller than infinite')
 
-        if xp.isnan(log_likeli):
-            log_likeli = float(xp.nan_to_num(-xp.inf))
+        if self.inf_to_num:
+            if xp.isnan(log_likeli):
+                log_likeli = float(xp.nan_to_num(-xp.inf))
+            else:
+                log_likeli = float(xp.nan_to_num(log_likeli))
         else:
-            log_likeli = float(xp.nan_to_num(log_likeli))
+            if xp.isnan(log_likeli):
+                log_likeli = -xp.inf
             
         return float(cp2np(log_likeli))
                 
